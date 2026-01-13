@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metro Wordle 1.3 Release</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap');
+
+        :root {
+            --metro-blue: #2d89ef;
+            --metro-green: #00a300;
+            --metro-purple: #7459d1;
+            --metro-red: #b91d47;
+            --metro-teal: #117a90;
+            --metro-rust: #d6522e;
+            --metro-dark: #1d1d1d;
+            --metro-yellow: #e3a21a;
+            --metro-orange: #da532c;
+            --metro-indigo: #603cba;
+            --metro-gray: #555555;
+            --metro-bright-purple: #a200ff;
+            --text-white: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: url('LockScreen.png') no-repeat center center fixed;
+            background-size: cover;
+            background-color: #111; 
+            color: var(--text-white);
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- ВЕРХНЯЯ ПАНЕЛЬ (ПОДНЯТА ВЫШЕ) --- */
+        .top-bar {
+            /* Уменьшили отступы, чтобы поднять всё вверх */
+            padding: 15px 50px 10px 50px; 
+            animation: fadeIn 1s ease;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .start-title {
+            font-size: 3rem; /* Чуть меньше, чтобы влезло 3 ряда */
+            font-weight: 300;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
+            margin-bottom: 0;
+        }
+
+        .top-right-container { display: flex; align-items: center; gap: 20px; }
+
+        .edit-mode-btn {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s;
+            z-index: 60;
+        }
+        .edit-mode-btn:hover { background: rgba(255,255,255,0.2); }
+        .edit-mode-btn.active { background: var(--metro-red); border-color: var(--metro-red); transform: rotate(45deg); }
+
+        .user-profile { display: flex; align-items: center; gap: 15px; cursor: pointer; }
+        .user-name { font-size: 1.3rem; font-weight: 600; text-shadow: 1px 1px 5px rgba(0,0,0,0.5); }
+        .user-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.8); background: #ccc; }
+
+        /* --- СЕТКА ПЛИТОК --- */
+        .scroll-container { 
+            width: 100%; 
+            height: calc(100vh - 80px); /* Высота минус шапка */
+            overflow-x: auto; 
+            overflow-y: hidden; 
+            padding-bottom: 20px;
+        }
+        
+        .tile-grid {
+            display: grid;
+            /* УВЕЛИЧИЛИ КОЛИЧЕСТВО КОЛОНОК ДО 12 (было 8). 
+               Это создает пустое пространство справа (4-я группа), куда можно тащить плитки. */
+            grid-template-columns: repeat(12, 140px);
+            grid-auto-rows: 140px; 
+            grid-auto-flow: dense;
+            gap: 12px;
+            padding-left: 50px;
+            padding-right: 50px;
+            margin-top: 5px; /* Уменьшили отступ сверху */
+            animation: slideIn 0.6s cubic-bezier(0.1, 0.9, 0.2, 1);
+            width: max-content;
+            min-height: 460px; /* Высота под 3 ряда */
+        }
+
+        /* Режим редактирования */
+        .tile-grid.editing-active .tile { 
+            transform: scale(0.92); 
+            opacity: 0.8;
+            cursor: grab; 
+            outline: 2px dashed rgba(255,255,255,0.3); 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .tile-grid.editing-active .tile:hover,
+        .tile-grid.editing-active .tile.dragging { 
+            transform: scale(1.05); 
+            opacity: 1;
+            outline: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            z-index: 100;
+        }
+
+        .scroll-container::-webkit-scrollbar { height: 8px; }
+        .scroll-container::-webkit-scrollbar-track { background: transparent; }
+        .scroll-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+
+        @keyframes slideIn { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- ПЛИТКА --- */
+        .tile {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), outline 0.1s;
+            overflow: hidden;
+            background-color: var(--metro-dark);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .tile:hover { outline: 3px solid rgba(255,255,255,0.4); z-index: 10; }
+        .tile:active { transform: scale(0.97); }
+        
+        /* Размеры */
+        .size-small { grid-column: span 1; grid-row: span 1; }
+        .size-wide { grid-column: span 2; grid-row: span 1; }
+        .size-large { grid-column: span 2; grid-row: span 2; }
+
+        .tile-content { position: absolute; bottom: 10px; left: 15px; display: flex; flex-direction: column; width: 85%; z-index: 2; pointer-events: none; }
+        .tile-label { font-size: 0.95rem; font-weight: 600; margin-top: 5px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);}
+        
+        .tile-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 60%; max-height: 60%; object-fit: contain; z-index: 1; pointer-events: none; }
+        .tile-img-full { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; pointer-events: none; }
+
+        /* Цвета */
+        .tile-game { background: var(--metro-blue); }
+        .tile-clock { background-color: var(--metro-purple); display: flex; align-items: center; justify-content: center; }
+        .clock-data { display: flex; flex-direction: column; align-items: center; z-index: 2; pointer-events: none;}
+        .time-text { font-size: 3.5rem; font-weight: 300; line-height: 1; }
+        .date-text { font-size: 1.2rem; opacity: 0.8; margin-top: 5px; }
+        
+        .tile-store { background-color: var(--metro-green); }
+        .tile-desktop { background-color: #2b2b2b; }
+        .tile-return { background-color: var(--metro-teal); }
+        .tile-about { background-color: var(--metro-rust); }
+        .tile-music { background-color: var(--metro-indigo); }
+        .tile-weather { background-color: var(--metro-orange); }
+        .tile-gallery { background-color: #00a300; }
+        .tile-settings { background-color: var(--metro-gray); }
+        
+        .tile-letter { display: flex; align-items: center; justify-content: center; }
+        .letter-span { font-size: 4rem; font-weight: 700; text-shadow: 2px 2px 0px rgba(0,0,0,0.2); pointer-events: none; }
+        .tile-me { background-color: var(--metro-bright-purple); }
+        .tile-me .letter-span { letter-spacing: 10px; }
+        .tile-t { background-color: var(--metro-blue); }
+        .tile-r { background-color: var(--metro-yellow); }
+        .tile-l { background-color: #e3a21a; }
+        .tile-s { background-color: #b91d47; }
+
+        /* --- ОКНО ПРИЛОЖЕНИЯ --- */
+        .app-window {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #111;
+            z-index: 100;
+            flex-direction: column;
+            animation: appLaunch 0.4s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+
+        @keyframes appLaunch { 
+            from { transform: scale(0.85); opacity: 0; } 
+            to { transform: scale(1); opacity: 1; } 
+        }
+
+        .app-header { padding: 15px 30px; display: flex; align-items: center; background: #1f1f1f; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .back-btn { background: none; border: 2px solid white; border-radius: 50%; color: white; width: 35px; height: 35px; font-size: 18px; cursor: pointer; margin-right: 20px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .back-btn:hover { background: white; color: black; }
+        .app-title { font-size: 1.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        .app-view { display: none; width: 100%; height: 100%; overflow-y: auto; flex-direction: column; }
+        
+        /* ИГРА */
+        #view-game { align-items: center; }
+        #mode-selection { display: flex; flex-direction: row; align-items: center; justify-content: center; height: 100%; gap: 40px; }
+        
+        .selection-card { width: 280px; height: 280px; background: #333; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; padding: 20px; text-align: center; border: 2px solid transparent;}
+        .selection-card:hover { transform: scale(1.05); outline: 4px solid rgba(255,255,255,0.3); }
+        .card-create { background: var(--metro-blue); }
+        .card-random { background: var(--metro-green); }
+        .card-img-icon { width: 100px; height: 100px; object-fit: contain; margin-bottom: 20px; }
+        .card-title { font-size: 1.8rem; font-weight: 600; margin: 0; }
+        .card-desc { font-size: 1rem; opacity: 0.8; margin-top: 10px; }
+
+        .create-interface { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; animation: fadeIn 0.5s; }
+        .metro-input { background: transparent; border: none; border-bottom: 2px solid #666; color: white; font-size: 2.5rem; text-align: center; width: 80%; max-width: 400px; padding: 10px; margin-bottom: 40px; text-transform: uppercase; outline: none; transition: border-color 0.3s; }
+        .metro-input:focus { border-color: var(--metro-blue); }
+        .metro-btn-action { background: var(--metro-blue); color: white; padding: 15px 40px; font-size: 1.2rem; cursor: pointer; border: none; font-weight: 600; transition: 0.2s; }
+        .metro-btn-action:hover { background: #1b6eae; transform: scale(1.05); }
+        .link-box { background: #222; border: 1px solid #444; padding: 15px; width: 80%; max-width: 500px; color: #aaa; margin-top: 20px; font-family: monospace; font-size: 1.1rem; text-align: center; }
+
+        #game-interface { display: none; flex-direction: column; height: 100%; width: 100%; }
+        #game-container { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+        .row { display: flex; gap: 6px; }
+        .tile-game-cell { width: 55px; height: 55px; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; text-transform: uppercase; transition: background-color 0.5s, border-color 0.5s; }
+        
+        .correct { background-color: var(--metro-green) !important; border-color: var(--metro-green) !important; color: white; }
+        .present { background-color: var(--metro-yellow) !important; border-color: var(--metro-yellow) !important; color: white; }
+        .absent { background-color: #3a3a3c !important; border-color: #3a3a3c !important; color: white; }
+
+        #message-area { text-align: center; height: 30px; color: white; font-size: 1.2rem; margin-top: 10px; }
+
+        #keyboard-container { background: #1a1a1a; padding: 15px 0 25px 0; display: flex; justify-content: center; }
+        #mini-keyboard { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 98%; max-width: 800px; }
+        .kb-row { display: flex; justify-content: center; gap: 5px; width: 100%; }
+        .key { height: 50px; flex: 1; background: #444; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; border-radius: 4px; max-width: 50px; transition: background 0.1s; }
+        .key:hover { background: #666; }
+        .key:active { background: #888; }
+        .key-wide { flex: 1.5; max-width: 80px; font-size: 0.9rem; }
+        .key-enter { background: var(--metro-green); }
+        .key-back { background: var(--metro-red); }
+
+        /* О ПРОГРАММЕ */
+        #view-about { padding: 40px; max-width: 800px; margin: 0 auto; color: #eee; }
+        #view-about h2 { font-size: 2.5rem; margin-bottom: 10px; color: var(--metro-rust); }
+        #view-about h4 { font-size: 1.2rem; margin-bottom: 30px; opacity: 0.8; font-weight: 300; }
+        #view-about p { font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px; }
+        #view-about .credits { margin-top: 40px; border-top: 1px solid #444; padding-top: 20px; }
+        #view-about .ps { margin-top: 30px; font-style: italic; opacity: 0.5; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="start-title">Metro Wordle</div>
+        <div class="top-right-container">
+            <button class="edit-mode-btn" id="edit-btn" onclick="toggleEditMode()" title="Режим редактирования (перемещение и размер)">✎</button>
+            <div class="user-profile" onclick="openApp('view-about', 'ПРОФИЛЬ')">
+                <div class="user-name">User</div>
+                <img src="bathroom_tiles/user.png" alt="User" class="user-avatar" onerror="this.src='user.png'">
+            </div>
+        </div>
+    </div>
+
+    <!-- СЕТКА ПЛИТОК -->
+    <div class="scroll-container">
+        <div class="tile-grid" id="tile-grid">
+            
+            <!-- ВАЖНО: У каждой плитки теперь есть ID для сохранения -->
+            
+            <!-- Игра -->
+            <div id="t-game" class="tile tile-game size-large" onclick="handleTileClick(this, () => openApp('view-game', 'METRO WORDLE'))">
+                <img src="bathroom_tiles/Game.png" alt="Game" class="tile-img">
+                <div class="tile-content"><span class="tile-label">Играть</span></div>
+            </div>
+
+            <!-- Рабочий стол -->
+            <div id="t-desktop" class="tile tile-desktop size-large" onclick="handleTileClick(this)">
+                <img src="bathroom_tiles/Desktop.png" alt="Desktop" class="tile-img-full">
+                <div class="tile-content"><span class="tile-label">Рабочий стол</span></div>
+            </div>
+
+            <!-- Часы -->
+            <div id="t-clock" class="tile tile-clock size-wide" onclick="handleTileClick(this)">
+                <div class="clock-data" id="live-clock-data"><span class="time-text">--:--</span><span class="date-text">-- ---</span></div>
+            </div>
+
+            <!-- Магазин -->
+            <div id="t-store" class="tile tile-store size-wide" onclick="handleTileClick(this)">
+                <img src="bathroom_tiles/Store.png" alt="Store" class="tile-img">
+                <div class="tile-content"><span class="tile-label">Microsoft Store</span></div>
+            </div>
+
+            <!-- О программе -->
+            <div id="t-about" class="tile tile-about size-wide" onclick="handleTileClick(this, () => openApp('view-about', 'ИНФОРМАЦИЯ'))">
+                <img src="bathroom_tiles/info.png" alt="Info" class="tile-img">
+                <div class="tile-content"><span class="tile-label">О программе</span></div>
+            </div>
+
+            <!-- Погода -->
+            <div id="t-weather" class="tile tile-weather size-wide" onclick="handleTileClick(this)">
+                <img src="bathroom_tiles/weather.png" alt="Weather" class="tile-img">
+                <div class="tile-content"><span class="tile-label">Погода</span></div>
+            </div>
+
+            <!-- ME -->
+            <div id="t-me" class="tile tile-letter tile-me size-wide" onclick="handleTileClick(this)"><span class="letter-span">M E</span></div>
+
+            <!-- Вернуться -->
+            <div id="t-return" class="tile tile-return size-small" onclick="handleTileClick(this, resumeGame)">
+                <img src="bathroom_tiles/again.png" alt="Again" class="tile-img">
+                <div class="tile-content"><span class="tile-label">Вернуться</span></div>
+            </div>
+
+            <!-- Музыка -->
+            <div id="t-music" class="tile tile-music size-small" onclick="handleTileClick(this)">
+                <img src="bathroom_tiles/Music.png" alt="Music" class="tile-img">
+                <div class="tile-content"><span class="tile-label">Музыка</span></div>
+            </div>
+
+            <!-- Настройки -->
+            <div id="t-settings" class="tile tile-settings size-small" onclick="handleTileClick(this)">
+                <img src="bathroom_tiles/Seting.png" alt="Settings" class="tile-img">
+                <div class="tile-content"><span class="tile-label">Настройки</span></div>
+            </div>
+
+             <!-- Галерея -->
+             <div id="t-gallery" class="tile tile-gallery size-small" onclick="handleTileClick(this)">
+                <div class="tile-content"><span class="tile-label">Галерея</span></div>
+            </div>
+
+            <!-- Буквы -->
+            <div id="t-let-t" class="tile tile-letter tile-t size-small" onclick="handleTileClick(this)"><span class="letter-span">T</span></div>
+            <div id="t-let-r" class="tile tile-letter tile-r size-small" onclick="handleTileClick(this)"><span class="letter-span">R</span></div>
+            <div id="t-let-l" class="tile tile-letter tile-l size-small" onclick="handleTileClick(this)"><span class="letter-span">L</span></div>
+            <div id="t-let-s" class="tile tile-letter tile-s size-small" onclick="handleTileClick(this)"><span class="letter-span">S</span></div>
+
+        </div>
+    </div>
+
+    <!-- ОКНО ПРИЛОЖЕНИЯ -->
+    <div id="game-app" class="app-window">
+        <div class="app-header">
+            <div class="back-btn" onclick="handleBackButton()">&#8592;</div>
+            <span class="app-title" id="app-title-text">APP TITLE</span>
+        </div>
+
+        <!-- 1. WORDLE GAME -->
+        <div id="view-game" class="app-view">
+            <div id="mode-selection">
+                <div class="selection-card card-create" onclick="startCreateMode()">
+                    <img src="bathroom_tiles/Create.png" alt="Create" class="card-img-icon">
+                    <div class="card-title">Создать игру</div>
+                    <div class="card-desc">Загадай слово для друга</div>
+                </div>
+                <div class="selection-card card-random" onclick="startRandomMode()">
+                    <img src="bathroom_tiles/Random.png" alt="Random" class="card-img-icon">
+                    <div class="card-title">Случайно</div>
+                    <div class="card-desc">Угадай слово из базы</div>
+                </div>
+            </div>
+
+            <div id="game-interface">
+                <div id="message-area"></div>
+                <div id="game-container"></div>
+                <div id="keyboard-container"><div id="mini-keyboard"></div></div>
+            </div>
+        </div>
+
+        <!-- 2. О ПРОГРАММЕ -->
+        <div id="view-about" class="app-view">
+            <h2>Metro Wordle</h2>
+            <h4>Улучшенная версия Wordle</h4>
+            
+            <p><strong>История создания:</strong> Мы с друзьями играли в Wordle и заметили, что мало букв. Jonny_Silver решил создать свой Wordle — изначально назвав его Meme Wordle. Позже проект подхватил Laroslav7, который придумал концепцию Metro Wordle.</p>
+            
+            <div class="credits">
+                <p><strong>Версия:</strong> 1.3 (Release)</p>
+                <p><strong>CEO:</strong> Jonny_Silver</p>
+                <p><strong>Глава разработок:</strong> Laroslav7</p>
+                <p><strong>Программисты:</strong> Google AI Studio, Gemini</p>
+            </div>
+
+            <div class="ps">P.S. Этот сайт создан без CSS (почти).</div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
