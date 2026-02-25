@@ -7,6 +7,7 @@ const maxAttempts = 6;
 let currentGameType = "METRO WORDLE"; 
 let isEditMode = false;
 let draggedItem = null;
+let messageTimeoutId = null;
 
 // --- БАЗА СЛОВ ---
 const wordsDB = [
@@ -109,9 +110,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const hash = window.location.hash.substring(1);
     if (hash) {
         try {
-            const decoded = decodeURIComponent(escape(atob(hash))).toUpperCase().replace(/\s/g, '');
-            if (decoded && decoded.length >= 3) {
-                targetWord = decoded;
+            const decoded = decodeURIComponent(escape(atob(hash)));
+            const preparedWord = sanitizeWord(decoded);
+            if (preparedWord && preparedWord.length >= 3) {
+                targetWord = preparedWord;
                 currentGameType = "Metro Wordle от друга"; 
                 openApp('view-game', currentGameType);
                 startGameUI();
@@ -162,6 +164,7 @@ function loadLayout() {
                 grid.appendChild(tile);
             }
         });
+        initDragAndDrop();
     } catch (e) { console.error("Ошибка загрузки", e); }
 }
 
@@ -270,7 +273,7 @@ function addDragEvents(tile) {
         draggedItem = this;
         this.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
+        e.dataTransfer.setData('text/plain', this.id || 'tile');
     });
     tile.addEventListener('dragend', function() {
         this.classList.remove('dragging');
@@ -332,14 +335,33 @@ function startCreateMode() {
             </div>
         </div>
     `;
+
+    const customInput = document.getElementById('custom-word-input');
+    if (customInput) {
+        customInput.focus();
+        customInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                generateLink();
+            }
+        });
+    }
 }
 
 function restoreMenu() { if(defaultModeSelectionHTML) document.getElementById('mode-selection').innerHTML = defaultModeSelectionHTML; }
 
+function sanitizeWord(rawWord) {
+    return String(rawWord || '').trim().toUpperCase().replace(/[^А-ЯЁ]/g, '');
+}
+
 function generateLink() {
     const input = document.getElementById('custom-word-input');
-    const word = input.value.trim().toUpperCase().replace(/[^А-ЯЁ]/g, '');
-    if (word.length < 3) { alert("Минимум 3 буквы!"); return; }
+    const word = sanitizeWord(input.value);
+    if (word.length < 3) {
+        showMessage("Минимум 3 буквы!", 'error');
+        input.focus();
+        return;
+    }
     const encoded = btoa(unescape(encodeURIComponent(word)));
     const url = window.location.origin + window.location.pathname + "#" + encoded;
     document.getElementById('create-actions').style.display = 'none';
@@ -347,12 +369,19 @@ function generateLink() {
     const resultArea = document.getElementById('link-result-area');
     resultArea.style.display = 'flex';
     document.getElementById('share-link').value = url;
+    showMessage("Ссылка готова — можно отправлять другу.", 'success');
 }
 
 function copyLink() {
     const linkInput = document.getElementById('share-link');
     linkInput.select();
-    navigator.clipboard.writeText(linkInput.value).then(() => { alert("Ссылка скопирована!"); });
+    if (!navigator.clipboard) {
+        showMessage("Буфер обмена недоступен в этом браузере.", 'warning');
+        return;
+    }
+    navigator.clipboard.writeText(linkInput.value)
+        .then(() => showMessage("Ссылка скопирована!", 'success'))
+        .catch(() => showMessage("Не удалось скопировать ссылку.", 'error'));
 }
 
 function startGameUI() {
@@ -420,6 +449,7 @@ document.addEventListener('keydown', (e) => {
 function addLetter(l) {
     if (currentTile < targetWord.length) {
         const tile = document.getElementById(`tile-${currentAttempt}-${currentTile}`);
+        if (!tile) return;
         tile.innerText = l;
         tile.style.borderColor = "#888";
         tile.style.transform = "scale(1.05)";
@@ -432,18 +462,19 @@ function deleteLetter() {
     if (currentTile > 0) {
         currentTile--;
         const tile = document.getElementById(`tile-${currentAttempt}-${currentTile}`);
+        if (!tile) return;
         tile.innerText = '';
         tile.style.borderColor = "#444";
     }
 }
 
 function submitGuess() {
-    if (currentTile < targetWord.length) { showMessage("Мало букв!"); return; }
+    if (currentTile < targetWord.length) { showMessage("Мало букв!", 'warning'); return; }
     let guess = "";
     for (let i = 0; i < targetWord.length; i++) guess += document.getElementById(`tile-${currentAttempt}-${i}`).innerText;
     revealColors(guess);
-    if (guess === targetWord) { showMessage("ПОБЕДА! 🎉"); gameOver = true; }
-    else if (currentAttempt === maxAttempts - 1) { showMessage("Слово было: " + targetWord); gameOver = true; }
+    if (guess === targetWord) { showMessage("ПОБЕДА! 🎉", 'success', 5000); gameOver = true; }
+    else if (currentAttempt === maxAttempts - 1) { showMessage("Слово было: " + targetWord, 'error', 6000); gameOver = true; }
     else { currentAttempt++; currentTile = 0; }
 }
 
@@ -475,4 +506,20 @@ function revealColors(guess) {
     }
 }
 
-function showMessage(msg) { document.getElementById('message-area').innerText = msg; }
+function showMessage(msg, type = 'warning', timeout = 2500) {
+    const messageArea = document.getElementById('message-area');
+    if (!messageArea) return;
+    messageArea.innerText = msg;
+    messageArea.classList.remove('message-success', 'message-warning', 'message-error');
+    if (type === 'success') messageArea.classList.add('message-success');
+    else if (type === 'error') messageArea.classList.add('message-error');
+    else messageArea.classList.add('message-warning');
+
+    if (messageTimeoutId) clearTimeout(messageTimeoutId);
+    if (timeout > 0) {
+        messageTimeoutId = setTimeout(() => {
+            messageArea.innerText = '';
+            messageArea.classList.remove('message-success', 'message-warning', 'message-error');
+        }, timeout);
+    }
+}

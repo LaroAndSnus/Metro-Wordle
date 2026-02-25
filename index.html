@@ -29,6 +29,9 @@
             --metro-explorer-color: #e3c800; /* Желтый для проводника */
 
             --text-white: #ffffff;
+            --text-dim: #d9e5ff;
+            --surface-glass: rgba(18, 24, 42, 0.62);
+            --tile-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
             
             /* Размеры */
             --cell-size: 135px; 
@@ -39,24 +42,33 @@
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', sans-serif;
-            background: url('LockScreen.png') no-repeat center center fixed;
+            background:
+                radial-gradient(circle at 12% 20%, rgba(45, 137, 239, 0.35), transparent 40%),
+                radial-gradient(circle at 85% 70%, rgba(116, 89, 209, 0.3), transparent 35%),
+                linear-gradient(145deg, rgba(5, 12, 26, 0.88), rgba(13, 24, 49, 0.9)),
+                url('LockScreen.png') no-repeat center center fixed;
             background-size: cover;
             background-color: #111; 
             color: var(--text-white);
             height: 100vh;
             overflow: hidden;
             user-select: none; /* Запрет выделения текста */
+            letter-spacing: 0.2px;
         }
 
         /* --- ВЕРХНЯЯ ПАНЕЛЬ --- */
         .top-bar {
-            padding: 15px 60px 5px 60px;
+            padding: 15px 60px 8px 60px;
             animation: fadeIn 1s ease;
-            position: relative;
+            position: sticky;
+            top: 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
             height: 60px;
+            backdrop-filter: blur(10px);
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.1));
+            z-index: 25;
         }
 
         .start-title {
@@ -64,6 +76,7 @@
             font-weight: 300;
             text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
             line-height: 1;
+            color: #f6fbff;
         }
 
         .top-right-container { display: flex; align-items: center; gap: 20px; }
@@ -72,7 +85,7 @@
             width: 40px; height: 40px;
             border-radius: 50%;
             border: 2px solid white;
-            background: transparent;
+            background: rgba(255,255,255,0.05);
             color: white;
             font-size: 1.2rem;
             cursor: pointer;
@@ -80,11 +93,11 @@
             transition: 0.3s;
             z-index: 60;
         }
-        .edit-mode-btn:hover { background: rgba(255,255,255,0.2); }
+        .edit-mode-btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
         .edit-mode-btn.active { background: var(--metro-red); border-color: var(--metro-red); transform: rotate(45deg); }
 
         .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .user-name { font-size: 1.2rem; font-weight: 600; text-shadow: 1px 1px 5px rgba(0,0,0,0.5); }
+        .user-name { font-size: 1.2rem; font-weight: 600; text-shadow: 1px 1px 5px rgba(0,0,0,0.5); color: var(--text-dim); }
         
         .user-avatar { 
             width: 40px; height: 40px; 
@@ -102,7 +115,8 @@
             overflow-y: hidden; 
             padding-left: 60px;
             padding-right: 60px;
-            padding-top: 10px;
+            padding-top: 20px;
+            padding-bottom: 20px;
             white-space: nowrap;
         }
         
@@ -135,11 +149,21 @@
 
         /* --- ПЛИТКА --- */
         .tile {
-            position: relative; cursor: pointer; transition: transform 0.1s linear, outline 0.1s;
-            overflow: hidden; background-color: var(--metro-dark); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: relative; cursor: pointer; transition: transform 0.18s ease, outline 0.18s ease, box-shadow 0.18s ease;
+            overflow: hidden; background-color: var(--metro-dark); box-shadow: var(--tile-shadow);
             grid-column: span 1; grid-row: span 1;
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        .tile:hover { outline: 3px solid rgba(255,255,255,0.4); z-index: 10; }
+        .tile::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(160deg, rgba(255,255,255,0.16), transparent 42%);
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .tile:hover { outline: 2px solid rgba(255,255,255,0.5); z-index: 10; transform: translateY(-2px); }
         .tile:active { transform: scale(0.97); }
         
         /* Размеры */
@@ -189,7 +213,7 @@
             left: 0;
             width: 100%;
             height: 80px;
-            background-color: #1d1d1d; /* Темно-синяя/черная полоса */
+            background: linear-gradient(180deg, rgba(5, 8, 15, 0.88), rgba(5, 8, 15, 0.96));
             border-top: 2px solid #2d89ef;
             display: flex;
             align-items: center;
@@ -198,6 +222,7 @@
             box-sizing: border-box;
             transition: bottom 0.3s ease-out;
             z-index: 200;
+            backdrop-filter: blur(10px);
         }
 
         #bottom-bar.visible {
@@ -206,7 +231,7 @@
 
         .bar-btn {
             background: none;
-            border: 2px solid #aaa;
+            border: 2px solid #8ea6d8;
             color: white;
             border-radius: 50%;
             width: 45px; height: 45px;
@@ -215,7 +240,7 @@
             cursor: pointer;
             margin-bottom: 5px;
         }
-        .bar-btn:hover { border-color: white; background: rgba(255,255,255,0.1); }
+        .bar-btn:hover { border-color: white; background: rgba(255,255,255,0.14); }
         
         .bar-item {
             display: flex; flex-direction: column; align-items: center;
@@ -235,7 +260,7 @@
         }
         @keyframes appLaunch { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        .app-header { padding: 15px 30px; display: flex; align-items: center; background: #1f1f1f; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .app-header { padding: 15px 30px; display: flex; align-items: center; background: linear-gradient(90deg, #1f1f1f, #1f2430); box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
         .back-btn { background: none; border: 2px solid white; border-radius: 50%; color: white; width: 35px; height: 35px; font-size: 18px; cursor: pointer; margin-right: 20px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .back-btn:hover { background: white; color: black; }
         .app-title { font-size: 1.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
@@ -245,8 +270,8 @@
         /* ИГРА */
         #view-game { align-items: center; }
         #mode-selection { display: flex; flex-direction: row; align-items: center; justify-content: center; height: 100%; gap: 40px; }
-        .selection-card { width: 280px; height: 280px; background: #333; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; padding: 20px; text-align: center; border: 2px solid transparent;}
-        .selection-card:hover { transform: scale(1.05); outline: 4px solid rgba(255,255,255,0.3); }
+        .selection-card { width: 280px; height: 280px; background: #333; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.22s ease, box-shadow 0.22s ease; padding: 20px; text-align: center; border: 2px solid transparent; box-shadow: var(--tile-shadow);}
+        .selection-card:hover { transform: translateY(-4px) scale(1.03); outline: 3px solid rgba(255,255,255,0.3); box-shadow: 0 16px 32px rgba(0,0,0,0.4); }
         .card-create { background: var(--metro-blue); }
         .card-random { background: var(--metro-green); }
         .card-img-icon { width: 100px; height: 100px; object-fit: contain; margin-bottom: 20px; }
@@ -254,10 +279,10 @@
         .card-desc { font-size: 1rem; opacity: 0.8; margin-top: 10px; }
 
         .create-interface { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; animation: fadeIn 0.5s; }
-        .metro-input { background: transparent; border: none; border-bottom: 2px solid #666; color: white; font-size: 2.5rem; text-align: center; width: 80%; max-width: 400px; padding: 10px; margin-bottom: 40px; text-transform: uppercase; outline: none; transition: border-color 0.3s; }
+        .metro-input { background: rgba(255,255,255,0.05); border: 2px solid transparent; border-bottom: 2px solid #666; color: white; font-size: 2.5rem; text-align: center; width: 80%; max-width: 400px; padding: 10px; margin-bottom: 40px; text-transform: uppercase; outline: none; transition: border-color 0.3s, background 0.3s; }
         .metro-input:focus { border-color: var(--metro-blue); }
         .metro-btn-action { background: var(--metro-blue); color: white; padding: 15px 40px; font-size: 1.2rem; cursor: pointer; border: none; font-weight: 600; transition: 0.2s; }
-        .metro-btn-action:hover { background: #1b6eae; transform: scale(1.05); }
+        .metro-btn-action:hover { background: #1b6eae; transform: translateY(-2px); }
         .link-box { background: #222; border: 1px solid #444; padding: 15px; width: 80%; max-width: 500px; color: #aaa; margin-top: 20px; font-family: monospace; font-size: 1.1rem; text-align: center; }
 
         #game-interface { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -267,13 +292,13 @@
         .correct { background-color: var(--metro-green) !important; border-color: var(--metro-green) !important; color: white; }
         .present { background-color: var(--metro-yellow) !important; border-color: var(--metro-yellow) !important; color: white; }
         .absent { background-color: #3a3a3c !important; border-color: #3a3a3c !important; color: white; }
-        #message-area { text-align: center; height: 30px; color: white; font-size: 1.2rem; margin-top: 10px; }
+        #message-area { text-align: center; min-height: 30px; color: white; font-size: 1.2rem; margin-top: 10px; padding: 4px 10px; }
 
         #keyboard-container { background: #1a1a1a; padding: 15px 0 25px 0; display: flex; justify-content: center; }
         #mini-keyboard { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 98%; max-width: 800px; }
         .kb-row { display: flex; justify-content: center; gap: 5px; width: 100%; }
         .key { height: 50px; flex: 1; background: #444; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; border-radius: 4px; max-width: 50px; transition: background 0.1s; }
-        .key:hover { background: #666; }
+        .key:hover { background: #666; transform: translateY(-1px); }
         .key:active { background: #888; }
         .key-wide { flex: 1.5; max-width: 80px; font-size: 0.9rem; }
         .key-enter { background: var(--metro-green); }
@@ -285,7 +310,26 @@
         #view-about h4 { font-size: 1.2rem; margin-bottom: 30px; opacity: 0.8; font-weight: 300; }
         #view-about p { font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px; }
         #view-about .credits { margin-top: 40px; border-top: 1px solid #444; padding-top: 20px; }
-        #view-about .ps { margin-top: 30px; font-style: italic; opacity: 0.5; font-size: 0.9rem; }
+        #view-about .ps { margin-top: 30px; font-style: italic; opacity: 0.7; font-size: 0.9rem; }
+
+        .message-success { color: #8df2ab; }
+        .message-warning { color: #ffd479; }
+        .message-error { color: #ff8d8d; }
+
+        @media (max-width: 900px) {
+            .top-bar { padding: 12px 20px 6px; }
+            .start-title { font-size: 2rem; }
+            .scroll-container { padding-left: 20px; padding-right: 20px; }
+            :root { --cell-size: 118px; }
+            #mode-selection { flex-direction: column; gap: 18px; }
+            .selection-card { width: min(88vw, 320px); height: 210px; }
+            #bottom-bar { padding: 0 20px; }
+            .bar-group { gap: 16px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -468,7 +512,7 @@
                 <p><strong>Программисты:</strong> Google AI Studio, Gemini</p>
             </div>
 
-            <div class="ps">P.S. Этот сайт создан без CSS (почти).</div>
+            <div class="ps">P.S. Интерфейс вдохновлён Metro и доработан с упором на UX.</div>
         </div>
 
     </div>
