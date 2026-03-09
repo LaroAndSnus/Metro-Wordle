@@ -8,6 +8,13 @@ let currentGameType = "METRO WORDLE";
 let isEditMode = false;
 let draggedItem = null;
 let messageTimeoutId = null;
+let isLogoMode = false;
+let selectedLetterTile = null;
+
+const LOGO_STORAGE_KEY = 'metroLogoTiles_v1';
+const LOGO_COLORS = [
+    '#00a2ed', '#9a2fae', '#2d89ef', '#00aba9', '#f0a30a', '#b91d47', '#603cba', '#e671b8', '#018574', '#da532c', '#647687', '#76608a'
+];
 
 // --- БАЗА СЛОВ ---
 const wordsDB = [
@@ -90,6 +97,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadLayout(); // ЗАГРУЗКА СОХРАНЕНИЯ
     updateClock();
     initDragAndDrop();
+    initLogoConstructor();
     
     // Обработка ПКМ для нижней панели
     document.body.addEventListener('contextmenu', function(e) {
@@ -191,7 +199,114 @@ function toggleEditMode() {
     }
 }
 
+function toggleLogoMode() {
+    isLogoMode = !isLogoMode;
+    const body = document.body;
+    const logoBtn = document.getElementById('logo-btn');
+
+    body.classList.toggle('logo-mode', isLogoMode);
+    if (logoBtn) logoBtn.classList.toggle('active', isLogoMode);
+
+    if (isLogoMode) {
+        if (!isEditMode) toggleEditMode();
+        selectLetterTile(document.querySelector('.tile-letter'));
+    } else {
+        clearSelectedLetterTile();
+    }
+}
+
+function initLogoConstructor() {
+    renderPalette();
+    loadLogoTiles();
+}
+
+function renderPalette() {
+    const palette = document.getElementById('color-palette');
+    if (!palette) return;
+    palette.innerHTML = '';
+
+    LOGO_COLORS.forEach(color => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'palette-color';
+        btn.style.backgroundColor = color;
+        btn.title = color;
+        btn.addEventListener('click', () => setSelectedTileColor(color));
+        palette.appendChild(btn);
+    });
+}
+
+function selectLetterTile(tile) {
+    if (!tile) return;
+    clearSelectedLetterTile();
+    selectedLetterTile = tile;
+    selectedLetterTile.classList.add('selected-letter');
+
+    const letterInput = document.getElementById('letter-input');
+    const span = selectedLetterTile.querySelector('.letter-span');
+    if (letterInput && span) letterInput.value = span.innerText.trim();
+}
+
+function clearSelectedLetterTile() {
+    if (selectedLetterTile) selectedLetterTile.classList.remove('selected-letter');
+    selectedLetterTile = null;
+}
+
+function updateSelectedLetter(value) {
+    if (!selectedLetterTile) return;
+    const normalized = value.toUpperCase().replace(/\s+/g, ' ').trim();
+    const span = selectedLetterTile.querySelector('.letter-span');
+    if (span) span.innerText = normalized || ' ';
+    saveLogoTiles();
+}
+
+function setSelectedTileColor(color) {
+    if (!selectedLetterTile) return;
+    selectedLetterTile.style.backgroundColor = color;
+    saveLogoTiles();
+}
+
+function saveLogoTiles() {
+    const data = Array.from(document.querySelectorAll('.tile-letter')).map(tile => {
+        const span = tile.querySelector('.letter-span');
+        return {
+            id: tile.id,
+            text: span ? span.innerText : '',
+            color: tile.style.backgroundColor || ''
+        };
+    });
+    localStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(data));
+}
+
+function loadLogoTiles() {
+    const raw = localStorage.getItem(LOGO_STORAGE_KEY);
+    if (!raw) return;
+    try {
+        const items = JSON.parse(raw);
+        items.forEach(item => {
+            const tile = document.getElementById(item.id);
+            if (!tile || !tile.classList.contains('tile-letter')) return;
+            const span = tile.querySelector('.letter-span');
+            if (span && typeof item.text === 'string') span.innerText = item.text;
+            if (typeof item.color === 'string') tile.style.backgroundColor = item.color;
+        });
+    } catch (e) {
+        console.error('Ошибка загрузки лого-плиток', e);
+    }
+}
+
+function cycleSelectedTileSize() {
+    if (!selectedLetterTile) return;
+    cycleTileSize(selectedLetterTile);
+    saveLogoTiles();
+}
+
 function handleTileClick(tileElement, actionFunction) {
+    if (isLogoMode) {
+        if (tileElement.classList.contains('tile-letter')) selectLetterTile(tileElement);
+        return;
+    }
+
     if (isEditMode) {
         cycleTileSize(tileElement);
     } else {
@@ -280,6 +395,7 @@ function addDragEvents(tile) {
         document.querySelectorAll('.tile').forEach(t => t.classList.remove('drag-over'));
         draggedItem = null;
         saveLayout();
+        if (isLogoMode) saveLogoTiles();
     });
     tile.addEventListener('dragover', function(e) {
         if (!isEditMode) return;
@@ -301,6 +417,7 @@ function addDragEvents(tile) {
         if (draggedIndex < droppedIndex) parent.insertBefore(draggedItem, this.nextSibling);
         else parent.insertBefore(draggedItem, this);
         saveLayout();
+        if (isLogoMode) saveLogoTiles();
     });
 }
 

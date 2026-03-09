@@ -13,11 +13,20 @@
         <div class="start-title">Metro Wordle</div>
         <div class="top-right-container">
             <button class="edit-mode-btn" id="edit-btn" onclick="toggleEditMode()" title="Режим редактирования">✎</button>
+            <button class="edit-mode-btn" id="logo-btn" onclick="toggleLogoMode()" title="Конструктор лого">LOGO</button>
             <div class="user-profile" onclick="openApp('view-about', 'ПРОФИЛЬ')">
                 <div class="user-name">User</div>
                 <img src="bathroom_tiles/user.png" alt="User" class="user-avatar" onerror="this.src='user.png'">
             </div>
         </div>
+    </div>
+
+    <div id="logo-editor" class="logo-editor">
+        <div class="logo-editor-title">Конструктор лого</div>
+        <input id="letter-input" class="logo-input" type="text" maxlength="5" placeholder="Буквы" oninput="updateSelectedLetter(this.value)">
+        <button class="edit-mode-btn" onclick="cycleSelectedTileSize()" title="Сменить размер">SIZE</button>
+        <div id="color-palette" class="color-palette"></div>
+        <div class="logo-tip">Клик по плитке: смена размера • Перетаскивание: перемещение</div>
     </div>
 
     <!-- ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ -->
